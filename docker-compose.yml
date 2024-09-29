@@ -1,0 +1,50 @@
+version: '3.8'
+
+
+services:
+
+  mysql:
+    image: mysql:8
+    container_name: db
+    restart: always
+    ports:
+      - "3306:3306"
+    volumes:
+      -  ./mysql:/var/lib/mysql
+    environment:
+      MYSQL_DATABASE: db
+      MYSQL_ROOT_PASSWORD: root
+    networks:
+      - full_cycle
+
+  node:
+    build:
+      context: node
+      dockerfile: ./Dockerfile
+    container_name: node
+    volumes:
+      - ./node:/usr/src/app
+      - /usr/src/app/node_modules
+      - ./node/wait-for-it.sh:/wait-for-it.sh
+    ports:
+      - "3000:3000"
+    networks:
+      - full_cycle
+    depends_on:
+      - mysql
+    entrypoint: ["/usr/src/app/wait-for-it.sh", "db:3306", "--", "npm", "start"]
+  
+  nginx:
+    image: nginx:latest
+    container_name: nginx
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - node
+    networks:
+      - full_cycle
+
+networks:
+  full_cycle:
